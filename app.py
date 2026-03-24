@@ -5,23 +5,23 @@ import requests
 from flask import Flask, request
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
-from google import genai
 
 # -------------------------------------------------------
 # 환경 변수
 # -------------------------------------------------------
-SLACK_BOT_TOKEN     = os.environ["SLACK_BOT_TOKEN"]
+SLACK_BOT_TOKEN      = os.environ["SLACK_BOT_TOKEN"]
 SLACK_SIGNING_SECRET = os.environ["SLACK_SIGNING_SECRET"]
-GEMINI_API_KEY      = os.environ["GEMINI_API_KEY"]
-GITHUB_TOKEN        = os.environ["GITHUB_TOKEN"]
-GITHUB_OWNER        = os.environ.get("GITHUB_OWNER", "Hyunbin-Si")
-GITHUB_REPO         = os.environ.get("GITHUB_REPO", "JN-People-AI-Bot")
-GITHUB_FILE_PATH    = os.environ.get("GITHUB_FILE_PATH", "guide_data.txt")
+GEMINI_API_KEY       = os.environ["GEMINI_API_KEY"]
+GITHUB_TOKEN         = os.environ["GITHUB_TOKEN"]
+GITHUB_OWNER         = os.environ.get("GITHUB_OWNER", "Hyunbin-Si")
+GITHUB_REPO          = os.environ.get("GITHUB_REPO", "JN-People-AI-Bot")
+GITHUB_FILE_PATH     = os.environ.get("GITHUB_FILE_PATH", "guide_data.txt")
 
-# -------------------------------------------------------
-# Gemini 설정
-# -------------------------------------------------------
-gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_URL = (
+    f"https://generativelanguage.googleapis.com/v1/models/"
+    f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+)
 
 # -------------------------------------------------------
 # Slack 앱
@@ -30,7 +30,7 @@ app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 
 
 def get_guide_content():
-    """GitHub에서 guide_data.txt 내용을 가져옵니다."""
+    """GitHubIܗ�서 guide_data.txt 내용을 가져옵니다."""
     url = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{GITHUB_FILE_PATH}"
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
@@ -45,7 +45,7 @@ def get_guide_content():
 
 
 def ask_gemini(question: str, guide_content: str) -> str:
-    """Gemini API로 HR 질문에 답변합니다."""
+    """Gemini v1 API (HTTP 월스 펜친)로 HR 질문에 답변합니다."""
     prompt = f"""당신은 중고나라 피플팀의 HR 어시스턴트 '피플AI봇'입니다.
 아래 HR 가이드 문서를 참고하여 직원의 질문에 친절하고 정확하게 답변해주세요.
 
@@ -61,15 +61,17 @@ def ask_gemini(question: str, guide_content: str) -> str:
 [직원 질문]
 {question}
 """
-    response = gemini_client.models.generate_content(
-        model="gemini-1.5-flash",
-        contents=prompt
-    )
-    return response.text
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    resp = requests.post(GEMINI_URL, json=payload, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+    return data["candidates"][0]["content"]["parts"][0]["text"]
 
 
 def build_answer(answer: str) -> str:
-    return f"📋 *피플AI봇 답변*\n\n{answer}\n\n_※ 정확한 내용은 피플팀에 문의해주세요._"
+    return f"📋 *피플AI봇 갓답변*\n\n{answer}\n\n_※ 정왕한 내용은 피플팀에 �웘해주세요._"
 
 
 # -------------------------------------------------------
