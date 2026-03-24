@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import re
 import base64
@@ -21,15 +22,14 @@ app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 
 def get_guide_content():
     url = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{GITHUB_FILE_PATH}"
-    headers = {
+    hdrs = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
-    response = requests.get(url, headers=headers, timeout=10)
-    if response.status_code == 200:
-        data = response.json()
-        content = base64.b64decode(data["content"]).decode("utf-8")
-        return content
+    resp = requests.get(url, headers=hdrs, timeout=10)
+    if resp.status_code == 200:
+        data = resp.json()
+        return base64.b64decode(data["content"]).decode("utf-8")
     return None
 
 
@@ -38,20 +38,22 @@ def ask_gemini(question, guide_content):
         f"https://generativelanguage.googleapis.com/v1/models/"
         f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
     )
-    prompt = (
-        "당신은 중고나라 피플팀의 HR 어시스턴트 '피플 AI밇'입니다.\n"
-        "아래 HR 가이드 문서를 참고하여 직원의 질문에 친절하고 정확하게 답변해주세요.\n\n"
-        "[답변 규칙]\n"
-        "1. 반드시 한국어로 답변하세요.\n"
-        "2. 문서에 있는 내용만 답변하고, 없는 내용은 "해당 내용은 가이드에 없어요. 피플팀에 직접 문의해주세요! 😊"라고 답변하세요.\n"
-        "3. 친절하고 명확하게, 핵심만 간결하게 답변하세요.\n"
-        "4. 관련 섹션이 있으면 출체를 함께 알려주세요.\n\n"
-        f"[HR 가이드 문서]\n{guide_content}\n\n"
-        f"[직원 질문]\n{question}"
-    )
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}]
-    }
+    prompt = f"""당신은 중고나라 피플팀의 HR 어시스턴트 피플AI봇입니다.
+아래 HR 가이드 문서를 참고하여 직원의 질문에 친절하고 정확하게 답변해주세요.
+
+[답변 규칙]
+1. 반드시 한국어로 답변하세요.
+2. 문서에 있는 내용만 답변하고, 없는 내용은 피플팀에 직접 문의하도록 안내하세요.
+3. 친절하고 명확하게, 핵심만 간결하게 답변하세요.
+4. 관련 섹션이 있으면 출처를 함께 알려주세요.
+
+[HR 가이드 문서]
+{guide_content}
+
+[직원 질문]
+{question}
+"""
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
     resp = requests.post(gemini_url, json=payload, timeout=30)
     resp.raise_for_status()
     data = resp.json()
@@ -59,32 +61,31 @@ def ask_gemini(question, guide_content):
 
 
 def build_answer(answer):
-    return f"📋 *피플AI밇 답변*\n\n{answer}\n\n_※ 정확한 내용은 피플팀에 문의해주세요._"
+    return f"[피플AI봇 답변]
+
+{answer}
+
+정확한 내용은 피플팀에 문의해주세요."
 
 
 @app.event("app_mention")
 def handle_mention(event, say, logger):
     text = event.get("text", "")
     question = re.sub(r"<@[A-Z0-9]+>", "", text).strip()
-
     if not question:
-        say("안녕하세요! 궁금한 HR 정보를 질문해주세요 😊")
+        say("안녕하세요! 궁금한 HR 정보를 질문해주세요.")
         return
-
-    say("잠시만요, 확인해드릴게요... 🔍")
-
+    say("잠시만요, 확인해드릴게요...")
     guide_content = get_guide_content()
     if not guide_content:
-        say("❌ 가이드 문서를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
+        say("가이드 문서를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
         logger.error("guide_data.txt load failed")
         return
-
     try:
         answer = ask_gemini(question, guide_content)
         say(build_answer(answer))
     except Exception as e:
-        error_msg = str(e)[:400]
-        say(f"❌ 오류 발생: {error_msg}")
+        say(f"오류 발생: {str(e)[:400]}")
         logger.error(f"Gemini API error: {e}")
 
 
@@ -94,24 +95,19 @@ def handle_dm(event, say, logger):
         return
     if event.get("bot_id"):
         return
-
     question = event.get("text", "").strip()
     if not question:
         return
-
-    say("잠시만요, 확인해드릴게요... 🔍")
-
+    say("잠시만요, 확인해드릴게요...")
     guide_content = get_guide_content()
     if not guide_content:
-        say("❌ 가이드 문서를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
+        say("가이드 문서를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
         return
-
     try:
         answer = ask_gemini(question, guide_content)
         say(build_answer(answer))
     except Exception as e:
-        error_msg = str(e)[:400]
-        say(f"❌ 오류 발생: {error_msg}")
+        say(f"오류 발생: {str(e)[:400]}")
         logger.error(f"Gemini API error: {e}")
 
 
