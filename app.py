@@ -7,20 +7,31 @@ from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
 import google.generativeai as genai
 
+# -------------------------------------------------------
+# 환경 변수
+# -------------------------------------------------------
 SLACK_BOT_TOKEN     = os.environ["SLACK_BOT_TOKEN"]
 SLACK_SIGNING_SECRET = os.environ["SLACK_SIGNING_SECRET"]
 GEMINI_API_KEY      = os.environ["GEMINI_API_KEY"]
 GITHUB_TOKEN        = os.environ["GITHUB_TOKEN"]
 GITHUB_OWNER        = os.environ.get("GITHUB_OWNER", "Hyunbin-Si")
 GITHUB_REPO         = os.environ.get("GITHUB_REPO", "JN-People-AI-Bot")
-GITHUB_FILE_PATH    = os.environ.get("GITHhUB_FILE_PATH", "guide_data.txt")
+GITHUB_FILE_PATH    = os.environ.get("GITHUB_FILE_PATH", "guide_data.txt")
+
+# -------------------------------------------------------
+# Gemini 설정
+# -------------------------------------------------------
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 
+# -------------------------------------------------------
+# Slack 앱
+# -------------------------------------------------------
 app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 
 
 def get_guide_content():
+    """GitHub에서 guide_data.txt 내용을 가져옵니다."""
     url = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{GITHUB_FILE_PATH}"
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
@@ -34,72 +45,95 @@ def get_guide_content():
     return None
 
 
-def ask_gemini(question, guide_content):
-    prompt = f"""\ub2f9\uc2e0\uc740 \uc911\uace0\ub098\ub77c \ud53c\ud50c\ud300\uc758 HR \uc5b4\uc2dc\uc2a4\ud134\ud2b8 '\ud53c\ud50cAI\ubd07'\uc785\ub2c8\ub2e4.
-\uc544\ub798 HR \uac00\uc774\ub4dc \ubb38\uc11c\ub97c \ucc38\uace0\ud558\uc5ec \uc9c1\uc6d0\uc758 \uc9c8\ubb38\uc5d0 \uce5c\uc808\ud558\uace0 \uc815\ud655\ud558\uac8c \ub2f5\ubcc0\ud574\uc8fc\uc138\uc694.
+def ask_gemini(question: str, guide_content: str) -> str:
+    """Gemini API로 HR 질문에 답변합니다."""
+    prompt = f"""당신은 중고나라 피플팀의 HR 어시스턴트 '피플AI봇'입니다.
+아래 HR 가이드 문서를 참고하여 직원의 질문에 친절하고 정확하게 답변해주세요.
 
-[\ub2f5\ubcc0 \uaddc\uce59]
-1. \ubc18\ub4dc\uc2dc \ud55c\uad6d\uc5b4\ub85c \ub2f5\ubcc0\ud558\uc138\uc694.
-2. \ubb38\uc11c\uc5d0 \uc788\ub294 \ub0b4\uc6a9\ub9cc \ub2f5\ubcc0\ud558\uace0, \uc5c6\ub294 \ub0b4\uc6a9\uc740 "\ud574\ub2f9 \ub0b4\uc6a9\uc740 \uac00\uc774\ub4dc\uc5d0 \uc5c6\uc5b4\uc694. \ud53c\ud50c\ud300\uc5d0 \uc9c1\uc811 \ubb38\uc758\ud574\uc8fc\uc138\uc694!"\ub77c\uace0 \ub2f5\ubcc0\ud558\uc138\uc694.
-3. \uce5c\uc808\ud558\uace0 \uba85\ud655\ud558\uac8c, \ud575\uc2ec\ub9cc \uac04\uacb0\ud558\uac8c \ub2f5\ubcc0\ud558\uc138\uc694.
-4. \uad00\ub828 \uc139\uc158\uc774 \uc788\uc73c\uba74 \ucd9c\cc98\ub97c \ud568\uaed8 \uc54c\ub824\uc8fc\uc138\uc694.
+[답변 규칙]
+1. 반드시 한국어로 답변하세요.
+2. 문서에 있는 내용만 답변하고, 없는 내용은 "해당 내용은 가이드에 없어요. 피플팀에 직접 문의해주세요! 😊"라고 답변하세요.
+3. 친절하고 명확하게, 핵심만 간결하게 답변하세요.
+4. 관련 섹션이 있으면 출처를 함께 알려주세요.
 
-[HR \uac00\uc774\ub4dc \ubb38\uc11c]
+[HR 가이드 문서]
 {guide_content}
 
-[\uc9c1\uc6d0 \uc9c8\ubb38]
+[직원 질문]
 {question}
 """
     response = model.generate_content(prompt)
     return response.text
 
 
-def build_answer(answer):
-    return f"\ud83d\udccb *\ud53c\ud50cAI\ubd07 \ub2f5\ubcc0*\n\n{answer}\n\n_\u203b \uc815\ud655\ud55c \ub0b4\uc6a9\uc740 \ud53c\ud50c\ud300\uc5d0 \ubb38\uc758\ud574\uc8fc\uc138\uc694._"
+def build_answer(answer: str) -> str:
+    return f"📋 *피플AI봇 답변*\n\n{answer}\n\n_※ 정확한 내용은 피플팀에 문의해주세요._"
 
 
+# -------------------------------------------------------
+# 이벤트 핸들러: 채널에서 봇 멘션
+# -------------------------------------------------------
 @app.event("app_mention")
 def handle_mention(event, say, logger):
     text = event.get("text", "")
     question = re.sub(r"<@[A-Z0-9]+>", "", text).strip()
+
     if not question:
-        say("\uc548\ub155\ud558\uc138\uc694! \uad81\uae08\ud55c HR \uc815\ubcf4\ub97c \uc9c8\ubb38\ud574\uc8fc\uc138\uc694 \ud83d\ude0a")
+        say("안녕하세요! 궁금한 HR 정보를 질문해주세요 😊\n예: `@피플AI봇 연차는 몇 개 발생하나요?`")
         return
-    say("\uc7a0\uc2dc\ub9cc\uc694, \ud655\uc778\ud574\ub4dc\ub9b4\uac8c\uc694... \ud83d\udd0d")
+
+    say("잠시만요, 확인해드릴게요... 🔍")
+
     guide_content = get_guide_content()
     if not guide_content:
-        say("\u274c \uac00\uc774\ub4dc \ubb38\uc11c\ub97c \ubd88\ub7ec\uc624\uc9c0 \ubabb\ud588\uc5b4\uc694.")
+        say("❌ 가이드 문서를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
+        logger.error("guide_data.txt 로드 실패")
         return
+
     try:
         answer = ask_gemini(question, guide_content)
         say(build_answer(answer))
     except Exception as e:
-        say("\u274c \ub2f5\ubcc0 \uc0dd\uc131 \uc911 \uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc5b4\uc694.")
-        logger.error(f"Gemini API \uc624\ub958: {e}")
+        error_msg = str(e)[:400]
+        say(f"❌ 오류 묜생: {error_msg}")
+        logger.error(f"Gemini API 오류: {e}")
 
 
+# -------------------------------------------------------
+# 이벤트 핸들러: DM (1:1 메시지)
+# -------------------------------------------------------
 @app.event("message")
 def handle_dm(event, say, logger):
+    # DM만 처리 (채널 메시지는 멘션으로만 응답)
     if event.get("channel_type") != "im":
         return
+    # 봇 자신의 메시지 무시
     if event.get("bot_id"):
         return
+
     question = event.get("text", "").strip()
     if not question:
         return
-    say("\uc7a0\uc2dc\ub9cc\uc694, \ud655\uc778\ud574\ub4dc\ub9b4\uac8c\uc694... \ud83d\udd0d")
+
+    say("잠시만요, 확인해드릴게요... 🔍")
+
     guide_content = get_guide_content()
     if not guide_content:
-        say("\u274c \uac00\uc774\ub4dc \ubb38\uc11c\ub97c \ubd88\ub7ec\uc624\uc9c0 \ubabb\ud588\uc5b4\uc694.")
+        say("❌ 가이드 문서를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
         return
+
     try:
         answer = ask_gemini(question, guide_content)
         say(build_answer(answer))
     except Exception as e:
-        say("\u274c \ub2f5\ubcc0 \uc0dd\uc131 \uc911 \uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc5b4\uc694.")
-        logger.error(f"Gemini API \uc624\ub958: {e}")
+        error_msg = str(e)[:400]
+        say(f"❌ 오류 발생: {error_msg}")
+        logger.error(f"Gemini API 오류: {e}")
 
 
+# -------------------------------------------------------
+# Flask 서버 (Railway용)
+# -------------------------------------------------------
 flask_app = Flask(__name__)
 handler = SlackRequestHandler(app)
 
