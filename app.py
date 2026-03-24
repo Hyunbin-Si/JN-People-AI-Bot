@@ -5,7 +5,7 @@ import requests
 from flask import Flask, request
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
-import google.generativeai as genai
+from google import genai
 
 # -------------------------------------------------------
 # 환경 변수
@@ -21,8 +21,7 @@ GITHUB_FILE_PATH    = os.environ.get("GITHUB_FILE_PATH", "guide_data.txt")
 # -------------------------------------------------------
 # Gemini 설정
 # -------------------------------------------------------
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # -------------------------------------------------------
 # Slack 앱
@@ -62,7 +61,10 @@ def ask_gemini(question: str, guide_content: str) -> str:
 [직원 질문]
 {question}
 """
-    response = model.generate_content(prompt)
+    response = gemini_client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=prompt
+    )
     return response.text
 
 
@@ -95,7 +97,7 @@ def handle_mention(event, say, logger):
         say(build_answer(answer))
     except Exception as e:
         error_msg = str(e)[:400]
-        say(f"❌ 오류 묜생: {error_msg}")
+        say(f"❌ 오류 발생: {error_msg}")
         logger.error(f"Gemini API 오류: {e}")
 
 
