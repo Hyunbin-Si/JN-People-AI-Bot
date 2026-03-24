@@ -18,7 +18,7 @@ GITHUB_TOKEN         = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_OWNER         = os.environ.get("GITHUB_OWNER", "Hyunbin-Si")
 GITHUB_REPO          = os.environ.get("GITHUB_REPO", "JN-People-AI-Bot")
 GITHUB_FILE_PATH     = os.environ.get("GITHUB_FILE_PATH", "guide_data.txt")
-GEMINI_MODEL         = "gemini-1.5-flash"
+GEMINI_MODEL         = "gemini-2.0-flash"
 
 # -------------------------------------------------------
 # Flask app starts FIRST so healthcheck always passes
@@ -60,7 +60,7 @@ def get_guide_content():
 
 def ask_gemini(question, guide_content):
     gemini_url = (
-        "https://generativelanguage.googleapis.com/v1/models/"
+        "https://generativelanguage.googleapis.com/v1beta/models/"
         + GEMINI_MODEL
         + ":generateContent?key=" + GEMINI_API_KEY
     )
