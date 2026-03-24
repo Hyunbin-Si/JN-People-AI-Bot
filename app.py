@@ -14,9 +14,8 @@ GITHUB_TOKEN        = os.environ["GITHUB_TOKEN"]
 GITHUB_OWNER        = os.environ.get("GITHUB_OWNER", "Hyunbin-Si")
 GITHUB_REPO         = os.environ.get("GITHUB_REPO", "JN-People-AI-Bot")
 GITHUB_FILE_PATH    = os.environ.get("GITHhUB_FILE_PATH", "guide_data.txt")
-
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 
