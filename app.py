@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# redeploy: 2026-03-24T07:51:14.831Z
 import os
 import re
 import base64
@@ -65,16 +66,16 @@ def ask_gemini(question, guide_content):
         + ":generateContent?key=" + GEMINI_API_KEY
     )
     prompt = (
-        "당신은 중고나라 피플팀의 HR 어시스턴트 피플AI봇입니다.\n"
-        "아래 HR 가이드 문서를 참고하여 직원의 질문에 친절하고 정확하게 답변해주세요.\n\n"
-        "[답변 규칙]\n"
-        "1. 반드시 한국어로 답변하세요.\n"
-        "2. 문서에 있는 내용만 답변하고, 없는 내용은 \"해당 내용은 가이드에 없어요. 피플팀에 직접 문의해주세요!\"라고 답변하세요.\n"
-        "3. 친절하고 명확하게, 핵심만 간결하게 답변하세요.\n"
-        "4. 관련 섹션이 있으면 출처를 함께 알려주세요.\n\n"
-        "[HR 가이드 문서]\n"
+        "ë¹ì ì ì¤ê³ ëë¼ í¼ííì HR ì´ìì¤í´í¸ í¼íAIë´ìëë¤.\n"
+        "ìë HR ê°ì´ë ë¬¸ìë¥¼ ì°¸ê³ íì¬ ì§ìì ì§ë¬¸ì ì¹ì íê³  ì ííê² ëµë³í´ì£¼ì¸ì.\n\n"
+        "[ëµë³ ê·ì¹]\n"
+        "1. ë°ëì íêµ­ì´ë¡ ëµë³íì¸ì.\n"
+        "2. ë¬¸ìì ìë ë´ì©ë§ ëµë³íê³ , ìë ë´ì©ì \"í´ë¹ ë´ì©ì ê°ì´ëì ìì´ì. í¼ííì ì§ì  ë¬¸ìí´ì£¼ì¸ì!\"ë¼ê³  ëµë³íì¸ì.\n"
+        "3. ì¹ì íê³  ëªííê², íµì¬ë§ ê°ê²°íê² ëµë³íì¸ì.\n"
+        "4. ê´ë ¨ ì¹ìì´ ìì¼ë©´ ì¶ì²ë¥¼ í¨ê» ìë ¤ì£¼ì¸ì.\n\n"
+        "[HR ê°ì´ë ë¬¸ì]\n"
         + guide_content
-        + "\n\n[직원 질문]\n"
+        + "\n\n[ì§ì ì§ë¬¸]\n"
         + question
     )
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -85,7 +86,7 @@ def ask_gemini(question, guide_content):
 
 
 def build_answer(answer):
-    return "[피플AI봇 답변]\n\n" + answer + "\n\n정확한 내용은 피플팀에 문의해주세요."
+    return "[í¼íAIë´ ëµë³]\n\n" + answer + "\n\nì íí ë´ì©ì í¼ííì ë¬¸ìí´ì£¼ì¸ì."
 
 
 # -------------------------------------------------------
@@ -97,12 +98,12 @@ if bolt_app:
         text = event.get("text", "")
         question = re.sub(r"<@[A-Z0-9]+>", "", text).strip()
         if not question:
-            say("안녕하세요! 궁금한 HR 정보를 질문해주세요")
+            say("ìëíì¸ì! ê¶ê¸í HR ì ë³´ë¥¼ ì§ë¬¸í´ì£¼ì¸ì")
             return
-        say("잠시만요, 확인해드릴게요... 🔍")
+        say("ì ìë§ì, íì¸í´ëë¦´ê²ì... ð")
         guide_content = get_guide_content()
         if not guide_content:
-            say("❌ 가이드 문서를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
+            say("â ê°ì´ë ë¬¸ìë¥¼ ë¶ë¬ì¤ì§ ëª»íì´ì. ì ì í ë¤ì ìëí´ì£¼ì¸ì.")
             logger.error("guide_data.txt load failed")
             return
         try:
@@ -110,7 +111,7 @@ if bolt_app:
             say(build_answer(answer))
         except Exception as e:
             error_msg = str(e)[:400]
-            say("❌ 오류 발생: " + error_msg)
+            say("â ì¤ë¥ ë°ì: " + error_msg)
             logger.error("Gemini API error: " + str(e))
 
     @bolt_app.event("message")
@@ -122,17 +123,17 @@ if bolt_app:
         question = event.get("text", "").strip()
         if not question:
             return
-        say("잠시만요, 확인해드릴게요... 🔍")
+        say("ì ìë§ì, íì¸í´ëë¦´ê²ì... ð")
         guide_content = get_guide_content()
         if not guide_content:
-            say("❌ 가이드 문서를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")
+            say("â ê°ì´ë ë¬¸ìë¥¼ ë¶ë¬ì¤ì§ ëª»íì´ì. ì ì í ë¤ì ìëí´ì£¼ì¸ì.")
             return
         try:
             answer = ask_gemini(question, guide_content)
             say(build_answer(answer))
         except Exception as e:
             error_msg = str(e)[:400]
-            say("❌ 오류 발생: " + error_msg)
+            say("â ì¤ë¥ ë°ì: " + error_msg)
             logger.error("Gemini API error: " + str(e))
 
 
