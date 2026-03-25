@@ -1,0 +1,18 @@
+``json
+{
+  "name": "slack-ai-bot",
+  "version": "1.0.0",
+  "description": "Slack 자동 답변 봇 - Gemini AI 기반",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@slack/bolt": "^4.1.0",
+    "@google/genai": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+```
