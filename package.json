@@ -1,4 +1,4 @@
-``json
+json
 {
   "name": "slack-ai-bot",
   "version": "1.0.0",
@@ -15,4 +15,3 @@
     "node": ">=18.0.0"
   }
 }
-```
