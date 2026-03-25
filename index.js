@@ -144,4 +144,3 @@ const healthServer = http.createServer((req, res) => {
     process.exit(1);
   }
 })();
-```
