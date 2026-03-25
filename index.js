@@ -1,4 +1,3 @@
-```javascript
 const { App } = require("@slack/bolt");
 const { GoogleGenAI } = require("@google/genai");
 const fs = require("fs");
