@@ -75,7 +75,9 @@ app.event("message", async ({ event, client }) => {
     if (event.bot_id || event.bot_profile) return;
     if (event.subtype) return;
     if (event.thread_ts) return;
-    if (TARGET_CHANNELS.length > 0 && !TARGET_CHANNELS.includes(event.channel)) return;
+    const isDM = event.channel.startsWith('D');
+    const isAllowed = TARGET_CHANNELS.includes(event.channel);
+    if (!isDM && !isAllowed) return;
 
     const question = event.text ? event.text.trim() : "";
     if (!question) return;
